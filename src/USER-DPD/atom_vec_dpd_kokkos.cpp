@@ -985,12 +985,14 @@ struct AtomVecAtomicKokkos_PackExchangeFunctor {
   typename AT::t_int_1d_randomread _type;
   typename AT::t_int_1d_randomread _mask;
   typename AT::t_imageint_1d_randomread _image;
+  typename AT::t_efloat_1d_randomread _dpdTheta,_uCond,_uMech,_uChem,_uCG,_uCGnew;
   typename AT::t_x_array _xw;
   typename AT::t_v_array _vw;
   typename AT::t_tagint_1d _tagw;
   typename AT::t_int_1d _typew;
   typename AT::t_int_1d _maskw;
   typename AT::t_imageint_1d _imagew;
+  typename AT::t_efloat_1d _dpdThetaw,_uCondw,_uMechw,_uChemw,_uCGw,_uCGneww;
 
   typename AT::t_xfloat_2d_um _buf;
   typename AT::t_int_1d_const _sendlist;
@@ -1010,17 +1012,29 @@ struct AtomVecAtomicKokkos_PackExchangeFunctor {
                 _type(atom->k_type.view<DeviceType>()),
                 _mask(atom->k_mask.view<DeviceType>()),
                 _image(atom->k_image.view<DeviceType>()),
+                _dpdTheta(atom->k_dpdTheta.view<DeviceType>()),
+                _uCond(atom->k_uCond.view<DeviceType>()),
+                _uMech(atom->k_uMech.view<DeviceType>()),
+                _uChem(atom->k_uChem.view<DeviceType>()),
+                _uCG(atom->k_uCG.view<DeviceType>()),
+                _uCGnew(atom->k_uCGnew.view<DeviceType>()),
                 _xw(atom->k_x.view<DeviceType>()),
                 _vw(atom->k_v.view<DeviceType>()),
                 _tagw(atom->k_tag.view<DeviceType>()),
                 _typew(atom->k_type.view<DeviceType>()),
                 _maskw(atom->k_mask.view<DeviceType>()),
                 _imagew(atom->k_image.view<DeviceType>()),
+                _dpdThetaw(atom->k_dpdTheta.view<DeviceType>()),
+                _uCondw(atom->k_uCond.view<DeviceType>()),
+                _uMechw(atom->k_uMech.view<DeviceType>()),
+                _uChemw(atom->k_uChem.view<DeviceType>()),
+                _uCGw(atom->k_uCG.view<DeviceType>()),
+                _uCGneww(atom->k_uCGnew.view<DeviceType>()),
                 _sendlist(sendlist.template view<DeviceType>()),
                 _copylist(copylist.template view<DeviceType>()),
                 _nlocal(nlocal),_dim(dim),
                 _lo(lo),_hi(hi){
-    const size_t elements = 11;
+    const size_t elements = 17;
     const int maxsendlist = (buf.template view<DeviceType>().dimension_0()*buf.template view<DeviceType>().dimension_1())/elements;
 
     buffer_view<DeviceType>(_buf,buf,maxsendlist,elements);
@@ -1029,7 +1043,7 @@ struct AtomVecAtomicKokkos_PackExchangeFunctor {
   KOKKOS_INLINE_FUNCTION
   void operator() (const int &mysend) const {
     const int i = _sendlist(mysend);
-    _buf(mysend,0) = 11;
+    _buf(mysend,0) = 17;
     _buf(mysend,1) = _x(i,0);
     _buf(mysend,2) = _x(i,1);
     _buf(mysend,3) = _x(i,2);
@@ -1040,6 +1054,12 @@ struct AtomVecAtomicKokkos_PackExchangeFunctor {
     _buf(mysend,8) = _type[i];
     _buf(mysend,9) = _mask[i];
     _buf(mysend,10) = _image[i];
+    _buf(mysend,11) = _dpdTheta[i];
+    _buf(mysend,12) = _uCond[i];
+    _buf(mysend,13) = _uMech[i];
+    _buf(mysend,14) = _uChem[i];
+    _buf(mysend,15) = _uCG[i];
+    _buf(mysend,16) = _uCGnew[i];
     const int j = _copylist(mysend);
 
     if(j>-1) {
@@ -1053,6 +1073,12 @@ struct AtomVecAtomicKokkos_PackExchangeFunctor {
     _typew[i] = _type(j);
     _maskw[i] = _mask(j);
     _imagew[i] = _image(j);
+    _dpdThetaw[i] = _dpdTheta(j);
+    _uCondw[i] = _uCond(j);
+    _uMechw[i] = _uMech(j);
+    _uChemw[i] = _uChem(j);
+    _uCGw[i] = _uCG(j);
+    _uCGneww[i] = _uCGnew(j);
     }
   }
 };
@@ -1061,20 +1087,20 @@ struct AtomVecAtomicKokkos_PackExchangeFunctor {
 
 int AtomVecAtomicKokkos::pack_exchange_kokkos(const int &nsend,DAT::tdual_xfloat_2d &k_buf, DAT::tdual_int_1d k_sendlist,DAT::tdual_int_1d k_copylist,ExecutionSpace space,int dim,X_FLOAT lo,X_FLOAT hi )
 {
-  if(nsend > (int) (k_buf.view<LMPHostType>().dimension_0()*k_buf.view<LMPHostType>().dimension_1())/11) {
-    int newsize = nsend*11/k_buf.view<LMPHostType>().dimension_1()+1;
+  if(nsend > (int) (k_buf.view<LMPHostType>().dimension_0()*k_buf.view<LMPHostType>().dimension_1())/17) {
+    int newsize = nsend*17/k_buf.view<LMPHostType>().dimension_1()+1;
     k_buf.resize(newsize,k_buf.view<LMPHostType>().dimension_1());
   }
   if(space == Host) {
     AtomVecAtomicKokkos_PackExchangeFunctor<LMPHostType> f(atomKK,k_buf,k_sendlist,k_copylist,atom->nlocal,dim,lo,hi);
     Kokkos::parallel_for(nsend,f);
     LMPHostType::fence();
-    return nsend*11;
+    return nsend*17;
   } else {
     AtomVecAtomicKokkos_PackExchangeFunctor<LMPDeviceType> f(atomKK,k_buf,k_sendlist,k_copylist,atom->nlocal,dim,lo,hi);
     Kokkos::parallel_for(nsend,f);
     LMPDeviceType::fence();
-    return nsend*11;
+    return nsend*17;
   }
 }
 
@@ -1093,6 +1119,12 @@ int AtomVecAtomicKokkos::pack_exchange(int i, double *buf)
   buf[m++] = ubuf(h_type(i)).d;
   buf[m++] = ubuf(h_mask(i)).d;
   buf[m++] = ubuf(h_image(i)).d;
+  buf[m++] = h_dpdTheta[i];
+  buf[m++] = h_uCond[i];
+  buf[m++] = h_uMech[i];
+  buf[m++] = h_uChem[i];
+  buf[m++] = h_uCG[i];
+  buf[m++] = h_uCGnew[i];
 
   if (atom->nextra_grow)
     for (int iextra = 0; iextra < atom->nextra_grow; iextra++)
@@ -1133,7 +1165,7 @@ struct AtomVecAtomicKokkos_UnpackExchangeFunctor {
                 _image(atom->k_image.view<DeviceType>()),
                 _nlocal(nlocal.template view<DeviceType>()),_dim(dim),
                 _lo(lo),_hi(hi){
-    const size_t elements = 11;
+    const size_t elements = 17;
     const int maxsendlist = (buf.template view<DeviceType>().dimension_0()*buf.template view<DeviceType>().dimension_1())/elements;
 
     buffer_view<DeviceType>(_buf,buf,maxsendlist,elements);
@@ -1154,6 +1186,12 @@ struct AtomVecAtomicKokkos_UnpackExchangeFunctor {
       _type[i] = _buf(myrecv,8);
       _mask[i] = _buf(myrecv,9);
       _image[i] = _buf(myrecv,10);
+      _dpdTheta[i] = _buf(myrecv,11);
+      _uCond[i] = _buf(myrecv,12);
+      _uMech[i] = _buf(myrecv,13);
+      _uChem[i] = _buf(myrecv,14);
+      _uCG[i] = _buf(myrecv,15);
+      _uCGnew[i] = _buf(myrecv,16);
     }
   }
 };
@@ -1164,7 +1202,7 @@ int AtomVecAtomicKokkos::unpack_exchange_kokkos(DAT::tdual_xfloat_2d &k_buf,int 
   if(space == Host) {
     k_count.h_view(0) = nlocal;
     AtomVecAtomicKokkos_UnpackExchangeFunctor<LMPHostType> f(atomKK,k_buf,k_count,dim,lo,hi);
-    Kokkos::parallel_for(nrecv/11,f);
+    Kokkos::parallel_for(nrecv/17,f);
     LMPHostType::fence();
     return k_count.h_view(0);
   } else {
@@ -1172,7 +1210,7 @@ int AtomVecAtomicKokkos::unpack_exchange_kokkos(DAT::tdual_xfloat_2d &k_buf,int 
     k_count.modify<LMPHostType>();
     k_count.sync<LMPDeviceType>();
     AtomVecAtomicKokkos_UnpackExchangeFunctor<LMPDeviceType> f(atomKK,k_buf,k_count,dim,lo,hi);
-    Kokkos::parallel_for(nrecv/11,f);
+    Kokkos::parallel_for(nrecv/17,f);
     LMPDeviceType::fence();
     k_count.modify<LMPDeviceType>();
     k_count.sync<LMPHostType>();
@@ -1201,6 +1239,12 @@ int AtomVecAtomicKokkos::unpack_exchange(double *buf)
   h_type(nlocal) = (int) ubuf(buf[m++]).i;
   h_mask(nlocal) = (int) ubuf(buf[m++]).i;
   h_image(nlocal) = (imageint) ubuf(buf[m++]).i;
+  h_dpdTheta[nlocal] = buf[m++];
+  h_uCond[nlocal] = buf[m++];
+  h_uMech[nlocal] = buf[m++];
+  h_uChem[nlocal] = buf[m++];
+  h_uCG[nlocal] = buf[m++];
+  h_uCGnew[nlocal] = buf[m++];
 
   if (atom->nextra_grow)
     for (int iextra = 0; iextra < atom->nextra_grow; iextra++)
@@ -1221,7 +1265,7 @@ int AtomVecAtomicKokkos::size_restart()
   int i;
 
   int nlocal = atom->nlocal;
-  int n = 11 * nlocal;
+  int n = 15 * nlocal; // 11 + dpdTheta + uCond + uMech + uChem
 
   if (atom->nextra_restart)
     for (int iextra = 0; iextra < atom->nextra_restart; iextra++)
@@ -1253,6 +1297,10 @@ int AtomVecAtomicKokkos::pack_restart(int i, double *buf)
   buf[m++] = h_v(i,0);
   buf[m++] = h_v(i,1);
   buf[m++] = h_v(i,2);
+  buf[m++] = h_dpdTheta[i];
+  buf[m++] = h_uCond[i];
+  buf[m++] = h_uMech[i];
+  buf[m++] = h_uChem[i];
 
   if (atom->nextra_restart)
     for (int iextra = 0; iextra < atom->nextra_restart; iextra++)
@@ -1288,6 +1336,10 @@ int AtomVecAtomicKokkos::unpack_restart(double *buf)
   h_v(nlocal,0) = buf[m++];
   h_v(nlocal,1) = buf[m++];
   h_v(nlocal,2) = buf[m++];
+  h_dpdTheta[nlocal] = buf[m++];
+  h_uCond[nlocal] = buf[m++];
+  h_uMech[nlocal] = buf[m++];
+  h_uChem[nlocal] = buf[m++];
 
   double **extra = atom->extra;
   if (atom->nextra_store) {
@@ -1326,6 +1378,14 @@ void AtomVecAtomicKokkos::create_atom(int itype, double *coord)
   h_v(nlocal,0) = 0.0;
   h_v(nlocal,1) = 0.0;
   h_v(nlocal,2) = 0.0;
+  h_rho[nlocal] = 0.0;
+  h_dpdTheta[nlocal] = 0.0;
+  h_uCond[nlocal] = 0.0;
+  h_uMech[nlocal] = 0.0;
+  h_uChem[nlocal] = 0.0;
+  h_uCG[nlocal] = 0.0;
+  h_uCGnew[nlocal] = 0.0;
+  h_duChem[nlocal] = 0.0;
 
   atom->nlocal++;
 }
@@ -1341,10 +1401,14 @@ void AtomVecAtomicKokkos::data_atom(double *coord, tagint imagetmp,
   int nlocal = atom->nlocal;
   if (nlocal == nmax) grow(0);
 
-  h_tag[nlocal] = atoi(values[0]);
+  h_tag[nlocal] = ATOTAGINT(values[0]);
   h_type[nlocal] = atoi(values[1]);
   if (type[nlocal] <= 0 || type[nlocal] > atom->ntypes)
     error->one(FLERR,"Invalid atom type in Atoms section of data file");
+
+  h_dpdTheta[nlocal] = atof(values[2]);
+  if (h_dpdTheta[nlocal] <= 0)
+    error->one(FLERR,"Internal temperature in Atoms section of date file must be > zero");
 
   h_x(nlocal,0) = coord[0];
   h_x(nlocal,1) = coord[1];
@@ -1357,9 +1421,28 @@ void AtomVecAtomicKokkos::data_atom(double *coord, tagint imagetmp,
   h_v(nlocal,1) = 0.0;
   h_v(nlocal,2) = 0.0;
 
+  h_rho[nlocal] = 0.0;
+  h_uCond[nlocal] = 0.0;
+  h_uMech[nlocal] = 0.0;
+  h_uChem[nlocal] = 0.0;
+  h_uCG[nlocal] = 0.0;
+  h_uCGnew[nlocal] = 0.0;
+
   atomKK->modified(Host,ALL_MASK);
 
   atom->nlocal++;
+}
+
+/* ----------------------------------------------------------------------
+   unpack hybrid quantities from one line in Atoms section of data file
+   initialize other atom quantities for this sub-style
+------------------------------------------------------------------------- */
+
+int AtomVecAtomicKokkos::data_atom_hybrid(int nlocal, char **values)
+{
+  h_dpdTheta[nlocal] = atof(values[0]);
+
+  return 1;
 }
 
 /* ----------------------------------------------------------------------
@@ -1370,15 +1453,26 @@ void AtomVecAtomicKokkos::pack_data(double **buf)
 {
   int nlocal = atom->nlocal;
   for (int i = 0; i < nlocal; i++) {
-    buf[i][0] = h_tag[i];
-    buf[i][1] = h_type[i];
-    buf[i][2] = h_x(i,0);
-    buf[i][3] = h_x(i,1);
-    buf[i][4] = h_x(i,2);
-    buf[i][5] = (h_image[i] & IMGMASK) - IMGMAX;
-    buf[i][6] = (h_image[i] >> IMGBITS & IMGMASK) - IMGMAX;
-    buf[i][7] = (h_image[i] >> IMG2BITS) - IMGMAX;
+    buf[i][0] = ubuf(h_tag[i]).d;
+    buf[i][1] = ubuf(h_type[i]).d;
+    buf[i][2] = h_dpdTheta[i];
+    buf[i][3] = h_x(i,0);
+    buf[i][4] = h_x(i,1);
+    buf[i][5] = h_x(i,2);
+    buf[i][6] = (h_image[i] & IMGMASK) - IMGMAX;
+    buf[i][7] = (h_image[i] >> IMGBITS & IMGMASK) - IMGMAX;
+    buf[i][8] = (h_image[i] >> IMG2BITS) - IMGMAX;
   }
+}
+
+/* ----------------------------------------------------------------------
+   pack hybrid atom info for data file
+------------------------------------------------------------------------- */
+
+int AtomVecAtomicKokkos::pack_data_hybrid(int i, double *buf)
+{
+  buf[0] = h_dpdTheta[i];
+  return 1;
 }
 
 /* ----------------------------------------------------------------------
@@ -1388,9 +1482,21 @@ void AtomVecAtomicKokkos::pack_data(double **buf)
 void AtomVecAtomicKokkos::write_data(FILE *fp, int n, double **buf)
 {
   for (int i = 0; i < n; i++)
-    fprintf(fp,"%d %d %-1.16e %-1.16e %-1.16e %d %d %d\n",
-            (int) buf[i][0],(int) buf[i][1],buf[i][2],buf[i][3],buf[i][4],
-            (int) buf[i][5],(int) buf[i][6],(int) buf[i][7]);
+    fprintf(fp,TAGINT_FORMAT " %d %-1.16e %-1.16e %-1.16e %-1.16e %d %d %d\n",
+            (tagint) ubuf(buf[i][0]).i,(int) ubuf(buf[i][1]).i,
+            buf[i][2],buf[i][3],buf[i][4],buf[i][5],
+            (int) ubuf(buf[i][6]).i,(int) ubuf(buf[i][7]).i,
+            (int) ubuf(buf[i][8]).i);
+}
+
+/* ----------------------------------------------------------------------
+   write hybrid atom info to data file
+------------------------------------------------------------------------- */
+
+int AtomVecAtomicKokkos::write_data_hybrid(FILE *fp, double *buf)
+{
+  fprintf(fp," %-1.16e",buf[0]);
+  return 1;
 }
 
 /* ----------------------------------------------------------------------
@@ -1408,6 +1514,14 @@ bigint AtomVecAtomicKokkos::memory_usage()
   if (atom->memcheck("x")) bytes += memory->usage(x,nmax,3);
   if (atom->memcheck("v")) bytes += memory->usage(v,nmax,3);
   if (atom->memcheck("f")) bytes += memory->usage(f,nmax*commKK->nthreads,3);
+  if (atom->memcheck("rho")) bytes += memory->usage(rho,nmax);
+  if (atom->memcheck("dpdTheta")) bytes += memory->usage(dpdTheta,nmax);
+  if (atom->memcheck("uCond")) bytes += memory->usage(uCond,nmax);
+  if (atom->memcheck("uMech")) bytes += memory->usage(uMech,nmax);
+  if (atom->memcheck("uChem")) bytes += memory->usage(uChem,nmax);
+  if (atom->memcheck("uCG")) bytes += memory->usage(uCG,nmax);
+  if (atom->memcheck("uCGnew")) bytes += memory->usage(uCGnew,nmax);
+  if (atom->memcheck("duChem")) bytes += memory->usage(duChem,nmax);
 
   return bytes;
 }
