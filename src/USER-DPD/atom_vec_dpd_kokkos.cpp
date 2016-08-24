@@ -125,29 +125,29 @@ void AtomVecDPDKokkos::grow_reset()
   h_f = atomKK->k_f.h_view;
 
   rho = atomKK->rho;
-  d_rho = atomKK->k_rho->d_view;
-  h_rho = atomKK->k_rho->h_view;
+  d_rho = atomKK->k_rho.d_view;
+  h_rho = atomKK->k_rho.h_view;
   dpdTheta = atomKK->dpdTheta;
-  d_dpdTheta = atomKK->k_dpdTheta->d_view;
-  h_dpdTheta = atomKK->k_dpdTheta->h_view;
+  d_dpdTheta = atomKK->k_dpdTheta.d_view;
+  h_dpdTheta = atomKK->k_dpdTheta.h_view;
   uCond = atomKK->uCond;
-  d_uCond = atomKK->uCond->d_view;;
-  h_uCond = atomKK->uCond->h_view;
+  d_uCond = atomKK->k_uCond.d_view;;
+  h_uCond = atomKK->k_uCond.h_view;
   uMech = atomKK->uMech;
-  d_uMech = atomKK->uMech->d_view;;
-  h_uMech = atomKK->uMech->h_view;
+  d_uMech = atomKK->k_uMech.d_view;;
+  h_uMech = atomKK->k_uMech.h_view;
   uChem = atomKK->uChem;
-  d_uChem = atomKK->uChem->d_view;;
-  h_uChem = atomKK->uChem->h_view;
+  d_uChem = atomKK->k_uChem.d_view;;
+  h_uChem = atomKK->k_uChem.h_view;
   uCG = atomKK->uCG;
-  d_uCG = atomKK->uCG->d_view;;
-  h_uCG = atomKK->uCG->h_view;
+  d_uCG = atomKK->k_uCG.d_view;;
+  h_uCG = atomKK->k_uCG.h_view;
   uCGnew = atomKK->uCGnew;
-  d_uCGnew = atomKK->uCGnew->d_view;;
-  h_uCGnew = atomKK->uCGnew->h_view;
+  d_uCGnew = atomKK->k_uCGnew.d_view;;
+  h_uCGnew = atomKK->k_uCGnew.h_view;
   duChem = atomKK->duChem;
-  d_duChem = atomKK->duChem->d_view;;
-  h_duChem = atomKK->duChem->h_view;
+  d_duChem = atomKK->k_duChem.d_view;;
+  h_duChem = atomKK->k_duChem.h_view;
 }
 
 /* ----------------------------------------------------------------------
@@ -236,7 +236,7 @@ struct AtomVecDPDKokkos_PackComm {
           _buf(i,2) = _x(j,2) + _pbc[2]*_zprd;
         }
       }
-      _buf(i,3) = _dpdThetra(j);
+      _buf(i,3) = _dpdTheta(j);
       _buf(i,4) = _uCond(j);
       _buf(i,5) = _uMech(j);
       _buf(i,6) = _uChem(j);
@@ -390,7 +390,7 @@ struct AtomVecDPDKokkos_PackCommSelf {
       }
       _dpdTheta(i+_nfirst) = _dpdTheta(j);
       _uCond(i+_nfirst) = _uCond(j);
-      _uMech(i+_nfirst) = _Mech(j);
+      _uMech(i+_nfirst) = _uMech(j);
       _uChem(i+_nfirst) = _uChem(j); 
   }
 };
@@ -757,21 +757,21 @@ struct AtomVecDPDKokkos_PackBorder {
       const typename ArrayTypes<DeviceType>::t_tagint_1d &tag,
       const typename ArrayTypes<DeviceType>::t_int_1d &type,
       const typename ArrayTypes<DeviceType>::t_int_1d &mask,
-      const typename DAT::tdual_efloat_1d &dpdTheta,
-      const typename DAT::tdual_efloat_1d &uCond,
-      const typename DAT::tdual_efloat_1d &uMech,
-      const typename DAT::tdual_efloat_1d &uChem,
-      const typename DAT::tdual_efloat_1d &uCG,
-      const typename DAT::tdual_efloat_1d &uCGnew,
+      const typename ArrayTypes<DeviceType>::t_efloat_1d &dpdTheta,
+      const typename ArrayTypes<DeviceType>::t_efloat_1d &uCond,
+      const typename ArrayTypes<DeviceType>::t_efloat_1d &uMech,
+      const typename ArrayTypes<DeviceType>::t_efloat_1d &uChem,
+      const typename ArrayTypes<DeviceType>::t_efloat_1d &uCG,
+      const typename ArrayTypes<DeviceType>::t_efloat_1d &uCGnew,
       const X_FLOAT &dx, const X_FLOAT &dy, const X_FLOAT &dz):
       _buf(buf),_list(list),_iswap(iswap),
       _x(x),_tag(tag),_type(type),_mask(mask),
-      _dpdTheta(dpdTheta.view<DeviceType>()),
-      _uCond(uCond.view<DeviceType>()),
-      _uMech(uMech.view<DeviceType>()),
-      _uChem(uChem.view<DeviceType>()),
-      _uCG(uCGnew.view<DeviceType>()),
-      _uCGnew(uCGnew.view<DeviceType>()),
+      _dpdTheta(dpdTheta),
+      _uCond(uCond),
+      _uMech(uMech),
+      _uChem(uChem),
+      _uCG(uCGnew),
+      _uCGnew(uCGnew),
       _dx(dx),_dy(dy),_dz(dz) {}
 
   KOKKOS_INLINE_FUNCTION
@@ -1012,6 +1012,44 @@ int AtomVecDPDKokkos::pack_border_vel(int n, int *list, double *buf,
 
 /* ---------------------------------------------------------------------- */
 
+int AtomVecDPDKokkos::pack_comm_hybrid(int n, int *list, double *buf)
+{
+  int i,j,m;
+
+  m = 0;
+  for (i = 0; i < n; i++) {
+    j = list[i];
+    buf[m++] = h_dpdTheta[j];
+    buf[m++] = h_uCond[j];
+    buf[m++] = h_uMech[j];
+    buf[m++] = h_uChem[j];
+    buf[m++] = h_uCG[j];
+    buf[m++] = h_uCGnew[j];
+  }
+  return m;
+}
+
+/* ---------------------------------------------------------------------- */
+
+int AtomVecDPDKokkos::pack_border_hybrid(int n, int *list, double *buf)
+{
+  int i,j,m;
+
+  m = 0;
+  for (i = 0; i < n; i++) {
+    j = list[i];
+    buf[m++] = h_dpdTheta[j];
+    buf[m++] = h_uCond[j];
+    buf[m++] = h_uMech[j];
+    buf[m++] = h_uChem[j];
+    buf[m++] = h_uCG[j];
+    buf[m++] = h_uCGnew[j];
+  }
+  return m;
+}
+
+/* ---------------------------------------------------------------------- */
+
 template<class DeviceType>
 struct AtomVecDPDKokkos_UnpackBorder {
   typedef DeviceType device_type;
@@ -1031,20 +1069,20 @@ struct AtomVecDPDKokkos_UnpackBorder {
       typename ArrayTypes<DeviceType>::t_tagint_1d &tag,
       typename ArrayTypes<DeviceType>::t_int_1d &type,
       typename ArrayTypes<DeviceType>::t_int_1d &mask,
-      const typename DAT::tdual_efloat_1d &dpdTheta,
-      const typename DAT::tdual_efloat_1d &uCond,
-      const typename DAT::tdual_efloat_1d &uMech,
-      const typename DAT::tdual_efloat_1d &uChem,
-      const typename DAT::tdual_efloat_1d &uCG,
-      const typename DAT::tdual_efloat_1d &uCGnew,
+      const typename ArrayTypes<DeviceType>::t_efloat_1d &dpdTheta,
+      const typename ArrayTypes<DeviceType>::t_efloat_1d &uCond,
+      const typename ArrayTypes<DeviceType>::t_efloat_1d &uMech,
+      const typename ArrayTypes<DeviceType>::t_efloat_1d &uChem,
+      const typename ArrayTypes<DeviceType>::t_efloat_1d &uCG,
+      const typename ArrayTypes<DeviceType>::t_efloat_1d &uCGnew,
       const int& first):
       _buf(buf),_x(x),_tag(tag),_type(type),_mask(mask),
-      _dpdTheta(dpdTheta.view<DeviceType>()),
-      _uCond(uCond.view<DeviceType>()),
-      _uMech(uMech.view<DeviceType>()),
-      _uChem(uChem.view<DeviceType>()),
-      _uCG(uCGnew.view<DeviceType>()),
-      _uCGnew(uCGnew.view<DeviceType>()),
+      _dpdTheta(dpdTheta),
+      _uCond(uCond),
+      _uMech(uMech),
+      _uChem(uChem),
+      _uCG(uCGnew),
+      _uCGnew(uCGnew),
       _first(first) {};
 
   KOKKOS_INLINE_FUNCTION
@@ -1363,6 +1401,12 @@ struct AtomVecDPDKokkos_UnpackExchangeFunctor {
   typename AT::t_int_1d _type;
   typename AT::t_int_1d _mask;
   typename AT::t_imageint_1d _image;
+  typename AT::t_efloat_1d _dpdTheta;
+  typename AT::t_efloat_1d _uCond;
+  typename AT::t_efloat_1d _uMech;
+  typename AT::t_efloat_1d _uChem;
+  typename AT::t_efloat_1d _uCG;
+  typename AT::t_efloat_1d _uCGnew;
 
   typename AT::t_xfloat_2d_um _buf;
   typename AT::t_int_1d _nlocal;
