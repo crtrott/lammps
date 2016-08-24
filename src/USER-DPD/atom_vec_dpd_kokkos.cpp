@@ -647,10 +647,10 @@ int AtomVecAtomicKokkos::pack_comm_vel(int n, int *list, double *buf,
           buf[m++] = h_v(j,1);
           buf[m++] = h_v(j,2);
         }
-        buf[m++] = h_dpdTheta[j];
-        buf[m++] = h_uCond[j];
-        buf[m++] = h_uMech[j];
-        buf[m++] = h_uChem[j]; 
+        buf[m++] = h_dpdTheta(j);
+        buf[m++] = h_uCond(j);
+        buf[m++] = h_uMech(j);
+        buf[m++] = h_uChem(j); 
       }
     }
   }
@@ -789,6 +789,12 @@ struct AtomVecAtomicKokkos_PackBorder {
       _buf(i,3) = _tag(j);
       _buf(i,4) = _type(j);
       _buf(i,5) = _mask(j);
+      _buf(i,6) = _dpdTheta(j);
+      _buf(i,7) = _uCond(j);
+      _buf(i,8) = _uMech(j);
+      _buf(i,9) = _uChem(j);
+      _buf(i,10) = _uCG(j);
+      _buf(i,11) = _uCGnew(j);
   }
 };
 
@@ -812,13 +818,17 @@ int AtomVecAtomicKokkos::pack_border_kokkos(int n, DAT::tdual_int_2d k_sendlist,
     if(space==Host) {
       AtomVecAtomicKokkos_PackBorder<LMPHostType,1> f(
         buf.view<LMPHostType>(), k_sendlist.view<LMPHostType>(),
-        iswap,h_x,h_tag,h_type,h_mask,dx,dy,dz);
+        iswap,h_x,h_tag,h_type,h_mask,
+        h_dpdTheta,h_uCond,h_uMech,h_uChem,h_uCG,h_uCGnew,
+        dx,dy,dz);
       Kokkos::parallel_for(n,f);
       LMPHostType::fence();
     } else {
       AtomVecAtomicKokkos_PackBorder<LMPDeviceType,1> f(
         buf.view<LMPDeviceType>(), k_sendlist.view<LMPDeviceType>(),
-        iswap,d_x,d_tag,d_type,d_mask,dx,dy,dz);
+        iswap,d_x,d_tag,d_type,d_mask,
+        d_dpdTheta,d_uCond,d_uMech,d_uChem,d_uCG,d_uCGnew,
+        dx,dy,dz);
       Kokkos::parallel_for(n,f);
       LMPDeviceType::fence();
     }
@@ -828,13 +838,17 @@ int AtomVecAtomicKokkos::pack_border_kokkos(int n, DAT::tdual_int_2d k_sendlist,
     if(space==Host) {
       AtomVecAtomicKokkos_PackBorder<LMPHostType,0> f(
         buf.view<LMPHostType>(), k_sendlist.view<LMPHostType>(),
-        iswap,h_x,h_tag,h_type,h_mask,dx,dy,dz);
+        iswap,h_x,h_tag,h_type,h_mask,
+        h_dpdTheta,h_uCond,h_uMech,h_uChem,h_uCG,h_uCGnew,
+        dx,dy,dz);
       Kokkos::parallel_for(n,f);
       LMPHostType::fence();
     } else {
       AtomVecAtomicKokkos_PackBorder<LMPDeviceType,0> f(
         buf.view<LMPDeviceType>(), k_sendlist.view<LMPDeviceType>(),
-        iswap,d_x,d_tag,d_type,d_mask,dx,dy,dz);
+        iswap,d_x,d_tag,d_type,d_mask,
+        d_dpdTheta,d_uCond,d_uMech,d_uChem,d_uCG,d_uCGnew,
+        dx,dy,dz);
       Kokkos::parallel_for(n,f);
       LMPDeviceType::fence();
     }
@@ -860,6 +874,12 @@ int AtomVecAtomicKokkos::pack_border(int n, int *list, double *buf,
       buf[m++] = ubuf(h_tag(j)).d;
       buf[m++] = ubuf(h_type(j)).d;
       buf[m++] = ubuf(h_mask(j)).d;
+      buf[m++] = h_dpdTheta(j);
+      buf[m++] = h_uCond(j);
+      buf[m++] = h_uMech(j);
+      buf[m++] = h_uChem(j);
+      buf[m++] = h_uCG(j);
+      buf[m++] = h_uCGnew(j);
     }
   } else {
     if (domain->triclinic == 0) {
@@ -879,6 +899,12 @@ int AtomVecAtomicKokkos::pack_border(int n, int *list, double *buf,
       buf[m++] = ubuf(h_tag(j)).d;
       buf[m++] = ubuf(h_type(j)).d;
       buf[m++] = ubuf(h_mask(j)).d;
+      buf[m++] = h_dpdTheta(j);
+      buf[m++] = h_uCond(j);
+      buf[m++] = h_uMech(j);
+      buf[m++] = h_uChem(j);
+      buf[m++] = h_uCG(j);
+      buf[m++] = h_uCGnew(j);
     }
   }
 
@@ -910,6 +936,12 @@ int AtomVecAtomicKokkos::pack_border_vel(int n, int *list, double *buf,
       buf[m++] = h_v(j,0);
       buf[m++] = h_v(j,1);
       buf[m++] = h_v(j,2);
+      buf[m++] = h_dpdTheta(j);
+      buf[m++] = h_uCond(j);
+      buf[m++] = h_uMech(j);
+      buf[m++] = h_uChem(j);
+      buf[m++] = h_uCG(j);
+      buf[m++] = h_uCGnew(j);
     }
   } else {
     if (domain->triclinic == 0) {
@@ -933,6 +965,12 @@ int AtomVecAtomicKokkos::pack_border_vel(int n, int *list, double *buf,
         buf[m++] = h_v(j,0);
         buf[m++] = h_v(j,1);
         buf[m++] = h_v(j,2);
+        buf[m++] = h_dpdTheta(j);
+        buf[m++] = h_uCond(j);
+        buf[m++] = h_uMech(j);
+        buf[m++] = h_uChem(j);
+        buf[m++] = h_uCG(j);
+        buf[m++] = h_uCGnew(j);
       }
     } else {
       dvx = pbc[0]*h_rate[0] + pbc[5]*h_rate[5] + pbc[4]*h_rate[4];
@@ -955,6 +993,12 @@ int AtomVecAtomicKokkos::pack_border_vel(int n, int *list, double *buf,
           buf[m++] = h_v(j,1);
           buf[m++] = h_v(j,2);
         }
+        buf[m++] = h_dpdTheta(j);
+        buf[m++] = h_uCond(j);
+        buf[m++] = h_uMech(j);
+        buf[m++] = h_uChem(j);
+        buf[m++] = h_uCG(j);
+        buf[m++] = h_uCGnew(j);
       }
     }
   }
@@ -977,6 +1021,7 @@ struct AtomVecAtomicKokkos_UnpackBorder {
   typename ArrayTypes<DeviceType>::t_tagint_1d _tag;
   typename ArrayTypes<DeviceType>::t_int_1d _type;
   typename ArrayTypes<DeviceType>::t_int_1d _mask;
+  typename ArrayTypes<DeviceType>::t_efloat_1d _dpdTheta,_uCond,_uMech,_uChem,_uCG,_uCGnew;
   int _first;
 
 
@@ -986,9 +1031,21 @@ struct AtomVecAtomicKokkos_UnpackBorder {
       typename ArrayTypes<DeviceType>::t_tagint_1d &tag,
       typename ArrayTypes<DeviceType>::t_int_1d &type,
       typename ArrayTypes<DeviceType>::t_int_1d &mask,
+      const typename DAT::tdual_efloat_1d &dpdTheta,
+      const typename DAT::tdual_efloat_1d &uCond,
+      const typename DAT::tdual_efloat_1d &uMech,
+      const typename DAT::tdual_efloat_1d &uChem,
+      const typename DAT::tdual_efloat_1d &uCG,
+      const typename DAT::tdual_efloat_1d &uCGnew,
       const int& first):
-      _buf(buf),_x(x),_tag(tag),_type(type),_mask(mask),_first(first){
-  };
+      _buf(buf),_x(x),_tag(tag),_type(type),_mask(mask),
+      _dpdTheta(dpdTheta.view<DeviceType>()),
+      _uCond(uCond.view<DeviceType>()),
+      _uMech(uMech.view<DeviceType>()),
+      _uChem(uChem.view<DeviceType>()),
+      _uCG(uCGnew.view<DeviceType>()),
+      _uCGnew(uCGnew.view<DeviceType>()),
+      _first(first) {};
 
   KOKKOS_INLINE_FUNCTION
   void operator() (const int& i) const {
@@ -998,6 +1055,12 @@ struct AtomVecAtomicKokkos_UnpackBorder {
       _tag(i+_first) = static_cast<int> (_buf(i,3));
       _type(i+_first) = static_cast<int>  (_buf(i,4));
       _mask(i+_first) = static_cast<int>  (_buf(i,5));
+      _dpdTheta(i+_first) = _buf(i,6);
+      _uCond(i+_first) = _buf(i,7);
+      _uMech(i+_first) = _buf(i,8);
+      _uChem(i+_first) = _buf(i,9);
+      _uCG(i+_first) = _buf(i,10);
+      _uCGnew(i+_first) = _buf(i,11);
 //      printf("%i %i %lf %lf %lf %i BORDER\n",_tag(i+_first),i+_first,_x(i+_first,0),_x(i+_first,1),_x(i+_first,2),_type(i+_first));
   }
 };
@@ -1010,11 +1073,17 @@ void AtomVecAtomicKokkos::unpack_border_kokkos(const int &n, const int &first,
   while (first+n >= nmax) grow(0);
   modified(space,X_MASK|TAG_MASK|TYPE_MASK|MASK_MASK);
   if(space==Host) {
-    struct AtomVecAtomicKokkos_UnpackBorder<LMPHostType> f(buf.view<LMPHostType>(),h_x,h_tag,h_type,h_mask,first);
+    struct AtomVecAtomicKokkos_UnpackBorder<LMPHostType> f(buf.view<LMPHostType>(),
+      h_x,h_tag,h_type,h_mask,
+      h_dpdTheta,h_uCond,h_uMech,h_uChem,h_uCG,h_uCGnew,
+      first);
     Kokkos::parallel_for(n,f);
     LMPHostType::fence();
   } else {
-    struct AtomVecAtomicKokkos_UnpackBorder<LMPDeviceType> f(buf.view<LMPDeviceType>(),d_x,d_tag,d_type,d_mask,first);
+    struct AtomVecAtomicKokkos_UnpackBorder<LMPDeviceType> f(buf.view<LMPDeviceType>(),
+      d_x,d_tag,d_type,d_mask,
+      d_dpdTheta,d_uCond,d_uMech,d_uChem,d_uCG,d_uCGnew,
+      first);
     Kokkos::parallel_for(n,f);
     LMPDeviceType::fence();
   }
@@ -1037,6 +1106,12 @@ void AtomVecAtomicKokkos::unpack_border(int n, int first, double *buf)
     h_tag(i) =  (tagint)  ubuf(buf[m++]).i;
     h_type(i) = (int) ubuf(buf[m++]).i;
     h_mask(i) = (int) ubuf(buf[m++]).i;
+    h_dpdTheta(i) = buf[m++];
+    h_uCond(i) = buf[m++];
+    h_uMech(i) = buf[m++];
+    h_uChem(i) = buf[m++];
+    h_uCG(i) = buf[m++];
+    h_uCGnew(i) = buf[m++];
   }
 
   if (atom->nextra_border)
@@ -1065,12 +1140,54 @@ void AtomVecAtomicKokkos::unpack_border_vel(int n, int first, double *buf)
     h_v(i,0) = buf[m++];
     h_v(i,1) = buf[m++];
     h_v(i,2) = buf[m++];
+    h_dpdTheta(i) = buf[m++];
+    h_uCond(i) = buf[m++];
+    h_uMech(i) = buf[m++];
+    h_uChem(i) = buf[m++];
+    h_uCG(i) = buf[m++];
+    h_uCGnew(i) = buf[m++];
   }
 
   if (atom->nextra_border)
     for (int iextra = 0; iextra < atom->nextra_border; iextra++)
       m += modify->fix[atom->extra_border[iextra]]->
         unpack_border(n,first,&buf[m]);
+}
+
+/* ---------------------------------------------------------------------- */
+
+int AtomVecAtomicKokkos::unpack_comm_hybrid(int n, int first, double *buf)
+{
+  int i,m,last;
+
+  m = 0;
+  last = first + n;
+  for (i = first; i < last; i++) {
+    h_dpdTheta(i) = buf[m++];
+    h_uCond(i) = buf[m++];
+    h_uMech(i) = buf[m++];
+    h_uChem(i) = buf[m++];
+  }
+  return m;
+}
+
+/* ---------------------------------------------------------------------- */
+
+int AtomVecAtomicKokkos::unpack_border_hybrid(int n, int first, double *buf)
+{
+  int i,m,last;
+
+  m = 0;
+  last = first + n;
+  for (i = first; i < last; i++) {
+    h_dpdTheta(i) = buf[m++];
+    h_uCond(i) = buf[m++];
+    h_uMech(i) = buf[m++];
+    h_uChem(i) = buf[m++];
+    h_uCG(i) = buf[m++];
+    h_uCGnew(i) = buf[m++];
+  }
+  return m;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -1540,7 +1657,7 @@ void AtomVecAtomicKokkos::data_atom(double *coord, tagint imagetmp,
 
 int AtomVecAtomicKokkos::data_atom_hybrid(int nlocal, char **values)
 {
-  h_dpdTheta[nlocal] = atof(values[0]);
+  h_dpdTheta(nlocal) = atof(values[0]);
 
   return 1;
 }
@@ -1553,9 +1670,9 @@ void AtomVecAtomicKokkos::pack_data(double **buf)
 {
   int nlocal = atom->nlocal;
   for (int i = 0; i < nlocal; i++) {
-    buf[i][0] = ubuf(h_tag[i]).d;
-    buf[i][1] = ubuf(h_type[i]).d;
-    buf[i][2] = h_dpdTheta[i];
+    buf[i][0] = ubuf(h_tag(i)).d;
+    buf[i][1] = ubuf(h_type(i)).d;
+    buf[i][2] = h_dpdTheta(i);
     buf[i][3] = h_x(i,0);
     buf[i][4] = h_x(i,1);
     buf[i][5] = h_x(i,2);
@@ -1571,7 +1688,7 @@ void AtomVecAtomicKokkos::pack_data(double **buf)
 
 int AtomVecAtomicKokkos::pack_data_hybrid(int i, double *buf)
 {
-  buf[0] = h_dpdTheta[i];
+  buf[0] = h_dpdTheta(i);
   return 1;
 }
 
