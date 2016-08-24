@@ -13,22 +13,22 @@
 
 #ifdef ATOM_CLASS
 
-AtomStyle(atomic/kk,AtomVecAtomicKokkos)
+AtomStyle(atomic/kk,AtomVecDPDKokkos)
 
 #else
 
-#ifndef LMP_ATOM_VEC_ATOMIC_KOKKOS_H
-#define LMP_ATOM_VEC_ATOMIC_KOKKOS_H
+#ifndef LMP_ATOM_VEC_DPD_KOKKOS_H
+#define LMP_ATOM_VEC_DPD_KOKKOS_H
 
 #include "atom_vec_kokkos.h"
 #include "kokkos_type.h"
 
 namespace LAMMPS_NS {
 
-class AtomVecAtomicKokkos : public AtomVecKokkos {
+class AtomVecDPDKokkos : public AtomVecKokkos {
  public:
-  AtomVecAtomicKokkos(class LAMMPS *);
-  virtual ~AtomVecAtomicKokkos() {}
+  AtomVecDPDKokkos(class LAMMPS *);
+  virtual ~AtomVecDPDKokkos() {}
   void grow(int);
   void copy(int, int, int);
   int pack_comm(int, int *, double *, int, int *);
